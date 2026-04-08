@@ -1,0 +1,213 @@
+# Descripción Detallada del Proyecto MediMarket
+# Objetivo General del Proyecto:
+
+El objetivo del proyecto MediMarket es crear una tienda en línea para productos médicos (máquinas, medicamentos, insumos de salud, etc.). El sistema consta de dos partes principales: un backend que maneja la lógica de negocio y las solicitudes HTTP, y un frontend que permite la visualización de los productos en una interfaz gráfica. El backend se desarrolla utilizando Flask (un framework de Python), y el frontend utiliza Tkinter (una biblioteca para crear interfaces gráficas de usuario). La base de datos es MySQL, donde se almacenan los productos de la tienda.
+
+# Estructura del Proyecto:
+# Backend (Flask y MySQL):
+El backend está encargado de gestionar los productos de la tienda, proporcionando una API RESTful para acceder a los productos, agregar nuevos productos y manipular los datos de la base de datos.
+Flask es el framework utilizado para crear la API RESTful.
+MySQL es la base de datos que almacena los productos de la tienda. Se conecta a través de Flask-SQLAlchemy, que actúa como un ORM (Object Relational Mapper) para interactuar con la base de datos.
+Frontend (Tkinter):
+Tkinter es una biblioteca para crear interfaces gráficas de usuario en Python. En este proyecto, se utiliza para crear la ventana de la aplicación donde los usuarios pueden ver los productos de la tienda.
+La interfaz permite cargar productos desde el backend y mostrarlos en un formato visual adecuado, con imágenes, nombre, precio y descripción.
+Pasos Realizados en el Proyecto:
+# 1. Backend (Flask - app.py)
+Configuración de la Base de Datos y Modelo de Producto:
+
+En el backend, primero configuramos la conexión a la base de datos MySQL utilizando Flask-SQLAlchemy. El modelo Product tiene los siguientes campos:
+
+id: Identificador único del producto (clave primaria).
+name: Nombre del producto.
+price: Precio del producto.
+description: Descripción breve del producto.
+image_url: URL de la imagen del producto.
+
+El modelo de la base de datos se ve de la siguiente manera:
+
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    description = db.Column(db.String(200))
+    image_url = db.Column(db.String(200))
+
+# Rutas de la API:
+# GET /api/products: Esta ruta devuelve todos los productos almacenados en la base de datos en formato JSON. Cada producto incluye su nombre, precio, descripción e imagen.
+
+@app.route('/api/products', methods=['GET'])
+def get_products():
+    products = Product.query.all()
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'price': p.price,
+        'description': p.description,
+        'image_url': p.image_url
+    } for p in products])
+
+# POST /api/products: Esta ruta permite agregar nuevos productos a la base de datos. Los datos del producto se envían en formato JSON, incluyendo su nombre, precio, descripción e imagen.
+
+@app.route('/api/products', methods=['POST'])
+def add_product():
+    data = request.get_json()
+    new_product = Product(
+        name=data['name'],
+        price=data['price'],
+        description=data['description'],
+        image_url=data['image_url']
+    )
+    db.session.add(new_product)
+    db.session.commit()
+    return jsonify({"message": "Producto agregado con éxito!"})
+
+# Inicialización de Productos Predeterminados:
+Si la base de datos está vacía, se agregan algunos productos predeterminados al inicio de la aplicación.
+
+def add_sample_products():
+    if Product.query.count() == 0:  # Solo agrega productos si no hay ninguno
+        products = [
+            {"name": "Monitor de Signos Vitales", "price": 1299.99, "description": "Monitor multiparámetro", "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Spacelabs_medical_monitor.jpg/320px-Spacelabs_medical_monitor.jpg"},
+            {"name": "Máquina de Rayos X Digital", "price": 9499.99, "description": "Sistema X-Ray portátil", "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Used_X-ray_machine.jpg/320px-Used_X-ray_machine.jpg"}
+        ]
+        for p in products:
+            db.session.add(Product(**p))
+        db.session.commit()
+
+# Ejecutar la Aplicación:
+
+El servidor Flask se ejecuta con el siguiente código, lo que permite que el backend esté disponible en http://127.0.0.1:5000 para recibir solicitudes:
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Crear las tablas si no existen
+        add_sample_products()  # Agregar productos predeterminados si no existen
+    app.run(debug=True)
+
+# 2. Frontend (Tkinter - main.py)
+Interfaz Gráfica con Tkinter:
+
+El frontend está hecho utilizando Tkinter. Este archivo maneja la interfaz gráfica, que tiene un botón "Cargar Productos". 
+Cuando el usuario hace clic en este botón, se realiza una solicitud GET al backend para obtener los productos y se muestran en la interfaz gráfica.
+
+import tkinter as tk
+from tkinter import messagebox
+import requests
+from PIL import Image, ImageTk
+from io import BytesIO
+
+# Función para obtener los productos desde el backend
+def fetch_products():
+    try:
+        response = requests.get("http://127.0.0.1:5000/api/products")
+        response.raise_for_status()  # Verifica si la solicitud fue exitosa
+        products = response.json()
+
+        # Limpiar la ventana antes de agregar nuevos productos
+        for widget in frame_products.winfo_children():
+            widget.destroy()
+
+        for product in products:
+            product_frame = tk.Frame(frame_products, width=180, height=300, relief="solid", bd=2)
+            product_frame.grid_propagate(False)
+            product_frame.grid(row=products.index(product)//4, column=products.index(product)%4, padx=10, pady=10)
+
+            # Cargar la imagen del producto
+            try:
+                img_response = requests.get(product['image_url'])
+                img_data = img_response.content
+                img = Image.open(BytesIO(img_data))
+                img = img.resize((150, 150))  # Ajustamos el tamaño de la imagen
+                img_tk = ImageTk.PhotoImage(img)
+
+                img_label = tk.Label(product_frame, image=img_tk)
+                img_label.image = img_tk  # Mantener una referencia de la imagen
+                img_label.grid(row=0, column=0, padx=10, pady=10)
+            except Exception as e:
+                print(f"Error al cargar imagen de {product['name']}: {e}")
+                img_label = tk.Label(product_frame, text="Imagen no disponible")
+                img_label.grid(row=0, column=0, padx=10, pady=10)
+
+            # Mostrar nombre y precio
+            name_label = tk.Label(product_frame, text=product['name'], font=("Arial", 10), anchor="w")
+            name_label.grid(row=1, column=0, padx=10, pady=5)
+
+            price_label = tk.Label(product_frame, text=f"${product['price']}", font=("Arial", 10), anchor="w")
+            price_label.grid(row=2, column=0, padx=10, pady=5)
+
+            # Botón "Ver más"
+            view_button = tk.Button(product_frame, text="Ver más", command=lambda p=product: view_product(p))
+            view_button.grid(row=3, column=0, padx=10, pady=5)
+
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Error", f"Error al conectar con el backend: {e}")
+
+# Función para mostrar más detalles del producto
+def view_product(product):
+    messagebox.showinfo("Producto", f"Nombre: {product['name']}\nPrecio: ${product['price']}\nDescripción: {product['description']}")
+
+# Crear la ventana principal de la aplicación
+root = tk.Tk()
+root.title("MediMarket - Tienda de Insumos Médicos")
+root.geometry("800x600")  # Tamaño de la ventana
+
+# Crear el marco principal de productos
+frame_products = tk.Frame(root)
+frame_products.pack(padx=20, pady=20)
+
+# Agregar un botón para cargar los productos
+load_button = tk.Button(root, text="Cargar Productos", command=fetch_products)
+load_button.pack(pady=10)
+
+# Iniciar la interfaz gráfica
+root.mainloop()
+
+# Función fetch_products():
+fetch_products() hace una solicitud HTTP GET al backend para obtener los productos desde la API y mostrarlos en la interfaz de Tkinter. Los productos se muestran como tarjetas con nombre, precio e imagen.
+
+# Requisitos y Dependencias:
+
+Este proyecto requiere ciertas bibliotecas de Python que puedes instalar con el siguiente archivo requirements.txt:
+
+# Archivo requirements.txt:
+
+Flask
+Flask-SQLAlchemy
+flask-cors
+mysql-connector-python
+Pillow
+requests
+
+# Para instalar todas las dependencias, ejecuta el siguiente comando:
+
+pip install -r requirements.txt
+
+# Pasos para Ejecutar el Proyecto:
+# Ejecutar el Backend (Flask):
+En la terminal, navega a la carpeta donde está el archivo app.py y ejecuta:
+
+\MediMarket>python backend \app.py
+
+Esto iniciará el servidor Flask y estará disponible en http://127.0.0.1:5000.
+
+# Ejecutar el Frontend (Tkinter):
+En otra terminal, navega a la carpeta donde está el archivo main.py y ejecuta:
+
+\MediMarket>python frontend \main.py
+
+# Este proyecto está compuesto por dos partes:
+
+# Backend (Flask + MySQL): Gestiona la lógica de negocio y permite interactuar con la base de datos a través de una API RESTful.
+# Frontend (Tkinter): Una interfaz gráfica de usuario que obtiene productos desde el backend y los muestra de manera visual.
+
+# Las dependencias necesarias incluyen Flask, Flask-SQLAlchemy, MySQL, Tkinter, Pillow, y Requests. Si todo está correctamente configurado, podrás ver los productos de la tienda cargados en la interfaz de Tkinter
+
+
+
+
+
+
+
+
+
+
