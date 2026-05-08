@@ -1,213 +1,535 @@
 # Descripción Detallada del Proyecto MediMarket
+
 # Objetivo General del Proyecto:
 
-El objetivo del proyecto MediMarket es crear una tienda en línea para productos médicos (máquinas, medicamentos, insumos de salud, etc.). El sistema consta de dos partes principales: un backend que maneja la lógica de negocio y las solicitudes HTTP, y un frontend que permite la visualización de los productos en una interfaz gráfica. El backend se desarrolla utilizando Flask (un framework de Python), y el frontend utiliza Tkinter (una biblioteca para crear interfaces gráficas de usuario). La base de datos es MySQL, donde se almacenan los productos de la tienda.
+El objetivo del proyecto MediMarket es crear una tienda virtual de productos médicos (equipos médicos, instrumental quirúrgico, medicamentos, insumos de salud, ortopedia, dermocosmética, vitaminas, productos para adulto mayor, fisioterapia y bioseguridad). 
+El sistema es una aplicación de escritorio monolítica desarrollada completamente en Java, que integra la lógica de negocio, la persistencia de datos y la interfaz gráfica en una sola aplicación. Se utiliza Java Swing para la interfaz gráfica de usuario, 
+serialización Java nativa para la persistencia de datos en archivos binarios `.dat`, y se aplican los principios de la Programación Orientada a Objetos (POO) junto con una arquitectura en capas tipo MVC (Modelo-Vista-Controlador).
 
 # Estructura del Proyecto:
-# Backend (Flask y MySQL):
-El backend está encargado de gestionar los productos de la tienda, proporcionando una API RESTful para acceder a los productos, agregar nuevos productos y manipular los datos de la base de datos.
-Flask es el framework utilizado para crear la API RESTful.
-MySQL es la base de datos que almacena los productos de la tienda. Se conecta a través de Flask-SQLAlchemy, que actúa como un ORM (Object Relational Mapper) para interactuar con la base de datos.
-Frontend (Tkinter):
-Tkinter es una biblioteca para crear interfaces gráficas de usuario en Python. En este proyecto, se utiliza para crear la ventana de la aplicación donde los usuarios pueden ver los productos de la tienda.
-La interfaz permite cargar productos desde el backend y mostrarlos en un formato visual adecuado, con imágenes, nombre, precio y descripción.
-Pasos Realizados en el Proyecto:
-# 1. Backend (Flask - app.py)
-Configuración de la Base de Datos y Modelo de Producto:
 
-En el backend, primero configuramos la conexión a la base de datos MySQL utilizando Flask-SQLAlchemy. El modelo Product tiene los siguientes campos:
+# Aplicación Monolítica (Java Swing + Serialización):
+A diferencia de proyectos cliente-servidor con backend y frontend separados, MediMarket es una aplicación de escritorio única donde todas las capas conviven en el mismo proceso. Esto elimina la necesidad de servidores externos, bases de datos remotas o conexiones de red.
 
-id: Identificador único del producto (clave primaria).
-name: Nombre del producto.
-price: Precio del producto.
-description: Descripción breve del producto.
-image_url: URL de la imagen del producto.
+Java JDK 21 es la plataforma utilizada, aprovechando todas sus APIs nativas: Swing para la UI, AWT/Graphics2D para componentes personalizados, Serializable para persistencia, Collections para manejo de listas, Generics para reutilización tipo-segura, y Regex para validaciones.
 
-El modelo de la base de datos se ve de la siguiente manera:
+Java Swing es el framework para crear la interfaz gráfica de usuario. La ventana principal mide 1280×820 píxeles e incluye header, sidebar de navegación, área central dinámica con CardLayout y footer con información corporativa.
 
-class Product(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-    price = db.Column(db.Float, nullable=False)
-    description = db.Column(db.String(200))
-    image_url = db.Column(db.String(200))
+Serialización Java actúa como mecanismo de persistencia. Los objetos se convierten a bytes mediante `ObjectOutputStream` y se almacenan en archivos `.dat` (productos.dat, usuarios.dat, pedidos.dat). Al iniciar la aplicación, los archivos se leen con `ObjectInputStream` reconstruyendo todo el grafo de objetos.
 
-# Rutas de la API:
-# GET /api/products: Esta ruta devuelve todos los productos almacenados en la base de datos en formato JSON. Cada producto incluye su nombre, precio, descripción e imagen.
+Eclipse IDE es el entorno de desarrollo utilizado para escribir, compilar, depurar y ejecutar el proyecto.
 
-@app.route('/api/products', methods=['GET'])
-def get_products():
-    products = Product.query.all()
-    return jsonify([{
-        'id': p.id,
-        'name': p.name,
-        'price': p.price,
-        'description': p.description,
-        'image_url': p.image_url
-    } for p in products])
+# Pasos Realizados en el Proyecto:
 
-# POST /api/products: Esta ruta permite agregar nuevos productos a la base de datos. Los datos del producto se envían en formato JSON, incluyendo su nombre, precio, descripción e imagen.
+# 1. Capa de Interfaces (com.medimarket.interfaces)
 
-@app.route('/api/products', methods=['POST'])
-def add_product():
-    data = request.get_json()
-    new_product = Product(
-        name=data['name'],
-        price=data['price'],
-        description=data['description'],
-        image_url=data['image_url']
-    )
-    db.session.add(new_product)
-    db.session.commit()
-    return jsonify({"message": "Producto agregado con éxito!"})
+Configuración de los Contratos del Sistema:
 
-# Inicialización de Productos Predeterminados:
-Si la base de datos está vacía, se agregan algunos productos predeterminados al inicio de la aplicación.
+Antes de implementar las clases concretas, definimos las interfaces que actúan como contratos del sistema. Las interfaces especifican qué métodos debe tener una clase pero no cómo implementarlos.
 
-def add_sample_products():
-    if Product.query.count() == 0:  # Solo agrega productos si no hay ninguno
-        products = [
-            {"name": "Monitor de Signos Vitales", "price": 1299.99, "description": "Monitor multiparámetro", "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Spacelabs_medical_monitor.jpg/320px-Spacelabs_medical_monitor.jpg"},
-            {"name": "Máquina de Rayos X Digital", "price": 9499.99, "description": "Sistema X-Ray portátil", "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Used_X-ray_machine.jpg/320px-Used_X-ray_machine.jpg"}
-        ]
-        for p in products:
-            db.session.add(Product(**p))
-        db.session.commit()
+Se definieron tres interfaces:
 
-# Ejecutar la Aplicación:
+`Identificable`: contrato para entidades con identificador único. Cualquier entidad persistible debe implementarla.
 
-El servidor Flask se ejecuta con el siguiente código, lo que permite que el backend esté disponible en http://127.0.0.1:5000 para recibir solicitudes:
+```java
+public interface Identificable {
+    String getId();
+}
+```
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Crear las tablas si no existen
-        add_sample_products()  # Agregar productos predeterminados si no existen
-    app.run(debug=True)
+`Vendible`: contrato para productos comercializables. Define las operaciones básicas de venta.
 
-# 2. Frontend (Tkinter - main.py)
-Interfaz Gráfica con Tkinter:
+```java
+public interface Vendible {
+    double calcularPrecioFinal();
+    void reducirStock(int cantidad);
+    boolean hayStock(int cantidad);
+}
+```
 
-El frontend está hecho utilizando Tkinter. Este archivo maneja la interfaz gráfica, que tiene un botón "Cargar Productos". 
-Cuando el usuario hace clic en este botón, se realiza una solicitud GET al backend para obtener los productos y se muestran en la interfaz gráfica.
+`OperacionesCRUD<T>`: interfaz genérica que define las operaciones Create-Read-Update-Delete para cualquier tipo de entidad. El uso de generics `<T>` permite reutilizar la misma interfaz para productos, usuarios y pedidos.
 
-import tkinter as tk
-from tkinter import messagebox
-import requests
-from PIL import Image, ImageTk
-from io import BytesIO
+```java
+public interface OperacionesCRUD<T> {
+    void guardar(T entidad);
+    List<T> listarTodos();
+    boolean eliminar(String id);
+    T buscarPorId(String id);
+}
+```
 
-# Función para obtener los productos desde el backend
-def fetch_products():
-    try:
-        response = requests.get("http://127.0.0.1:5000/api/products")
-        response.raise_for_status()  # Verifica si la solicitud fue exitosa
-        products = response.json()
+# 2. Capa de Modelo (com.medimarket.modelo)
 
-        # Limpiar la ventana antes de agregar nuevos productos
-        for widget in frame_products.winfo_children():
-            widget.destroy()
+Configuración del Modelo de Productos:
 
-        for product in products:
-            product_frame = tk.Frame(frame_products, width=180, height=300, relief="solid", bd=2)
-            product_frame.grid_propagate(False)
-            product_frame.grid(row=products.index(product)//4, column=products.index(product)%4, padx=10, pady=10)
+En el modelo, primero creamos la clase abstracta base `Producto` que implementa las interfaces `Vendible`, `Identificable` y `Serializable`. Esta clase tiene los siguientes atributos comunes a todos los productos:
 
-            # Cargar la imagen del producto
-            try:
-                img_response = requests.get(product['image_url'])
-                img_data = img_response.content
-                img = Image.open(BytesIO(img_data))
-                img = img.resize((150, 150))  # Ajustamos el tamaño de la imagen
-                img_tk = ImageTk.PhotoImage(img)
+- `id`: Identificador único del producto (clave primaria, generado con UUID).
+- `nombre`: Nombre del producto.
+- `descripcion`: Descripción detallada del producto.
+- `precio`: Precio base del producto.
+- `stock`: Cantidad disponible en inventario.
+- `marca`: Marca del fabricante.
+- `categoria`: Enum con la categoría del producto (12 categorías disponibles).
+- `enOferta`: Boolean que indica si tiene descuento activo.
+- `porcentajeDescuento`: Valor del descuento entre 0 y 1.
+- `destacado`: Boolean que marca productos destacados.
 
-                img_label = tk.Label(product_frame, image=img_tk)
-                img_label.image = img_tk  # Mantener una referencia de la imagen
-                img_label.grid(row=0, column=0, padx=10, pady=10)
-            except Exception as e:
-                print(f"Error al cargar imagen de {product['name']}: {e}")
-                img_label = tk.Label(product_frame, text="Imagen no disponible")
-                img_label.grid(row=0, column=0, padx=10, pady=10)
+La clase abstracta se ve de la siguiente manera:
 
-            # Mostrar nombre y precio
-            name_label = tk.Label(product_frame, text=product['name'], font=("Arial", 10), anchor="w")
-            name_label.grid(row=1, column=0, padx=10, pady=5)
+```java
+public abstract class Producto implements Vendible, Identificable, Serializable {
+    protected String id;
+    protected String nombre;
+    protected String descripcion;
+    protected double precio;
+    protected int stock;
+    protected String marca;
+    protected Categoria categoria;
+    protected boolean enOferta;
+    protected double porcentajeDescuento;
+    protected boolean destacado;
 
-            price_label = tk.Label(product_frame, text=f"${product['price']}", font=("Arial", 10), anchor="w")
-            price_label.grid(row=2, column=0, padx=10, pady=5)
+    public abstract String detalleEspecifico();
 
-            # Botón "Ver más"
-            view_button = tk.Button(product_frame, text="Ver más", command=lambda p=product: view_product(p))
-            view_button.grid(row=3, column=0, padx=10, pady=5)
+    @Override
+    public double calcularPrecioFinal() {
+        return enOferta ? precio * (1 - porcentajeDescuento) : precio;
+    }
 
-    except requests.exceptions.RequestException as e:
-        messagebox.showerror("Error", f"Error al conectar con el backend: {e}")
+    @Override
+    public void reducirStock(int cantidad) {
+        if (hayStock(cantidad)) stock -= cantidad;
+    }
 
-# Función para mostrar más detalles del producto
-def view_product(product):
-    messagebox.showinfo("Producto", f"Nombre: {product['name']}\nPrecio: ${product['price']}\nDescripción: {product['description']}")
+    @Override
+    public boolean hayStock(int cantidad) {
+        return stock >= cantidad;
+    }
+}
+```
 
-# Crear la ventana principal de la aplicación
-root = tk.Tk()
-root.title("MediMarket - Tienda de Insumos Médicos")
-root.geometry("800x600")  # Tamaño de la ventana
+# Subclases Polimórficas:
 
-# Crear el marco principal de productos
-frame_products = tk.Frame(root)
-frame_products.pack(padx=20, pady=20)
+A partir de `Producto` se crearon tres subclases concretas que aplican herencia y polimorfismo. Cada una agrega atributos específicos y sobrescribe `detalleEspecifico()` con su propia implementación:
 
-# Agregar un botón para cargar los productos
-load_button = tk.Button(root, text="Cargar Productos", command=fetch_products)
-load_button.pack(pady=10)
+`EquipoMedico`: agrega `tipoAlimentacion` (110V, pilas, recargable), `garantiaMeses` y `requiereCalibracion`.
 
-# Iniciar la interfaz gráfica
-root.mainloop()
+`Medicamento`: agrega `principioActivo`, `presentacion`, `fechaVencimiento` y `requiereReceta`.
 
-# Función fetch_products():
-fetch_products() hace una solicitud HTTP GET al backend para obtener los productos desde la API y mostrarlos en la interfaz de Tkinter. Los productos se muestran como tarjetas con nombre, precio e imagen.
+`InsumoMedico`: agrega `material`, `esteril` y `presentacion`.
+
+# Enumeración de Categorías:
+
+Se creó el enum `Categoria` con las 12 categorías de la tienda, garantizando seguridad de tipos:
+
+```java
+public enum Categoria {
+    EQUIPOS_MEDICOS, INSTRUMENTAL_QUIRURGICO, INSUMOS, ORTOPEDIA,
+    MONITOREO, LABORATORIO, FARMACIA, DERMOCOSMETICA, VITAMINAS,
+    ADULTO_MAYOR, FISIOTERAPIA, BIOSEGURIDAD;
+}
+```
+
+# Modelo de Usuarios:
+
+La clase `Usuario` modela los usuarios del sistema con autenticación. Incluye un enum interno `TipoUsuario` que diferencia entre Cliente, Profesional de Salud, Institución y Administrador.
+
+```java
+public class Usuario implements Identificable, Serializable {
+    private String id;
+    private String nombre;
+    private String email;
+    private String password;
+    private String telefono;
+    private String direccion;
+    private TipoUsuario tipo;
+    private LocalDate fechaRegistro;
+
+    public enum TipoUsuario {
+        CLIENTE, PROFESIONAL_SALUD, INSTITUCION, ADMINISTRADOR
+    }
+
+    public boolean verificarPassword(String pass) {
+        return this.password.equals(pass);
+    }
+}
+```
+
+# Modelo de Carrito y Pedidos:
+
+`ItemCarrito` representa cada línea del carrito (producto + cantidad), con cálculo automático de subtotal.
+
+`Carrito` es una lista de items con métodos para agregar, eliminar, calcular total y vaciar.
+
+`Pedido` representa una compra finalizada con usuario, items, total, fecha, estado (PENDIENTE, CONFIRMADO, ENVIADO, ENTREGADO, CANCELADO), dirección de entrega y método de pago.
+
+# 3. Capa de Excepciones (com.medimarket.excepciones)
+
+Se diseñaron cuatro excepciones verificadas (que extienden `Exception`) específicas del dominio del negocio. Esto obliga al compilador a forzar el manejo de errores con `try-catch`, haciendo el código más robusto:
+
+`AutenticacionException`: se lanza cuando un intento de login falla por credenciales incorrectas.
+
+`DatosInvalidosException`: se lanza cuando los datos de un formulario no pasan las validaciones (email mal formado, contraseña corta, campos vacíos).
+
+`StockInsuficienteException`: se lanza cuando se intenta vender más unidades de las disponibles.
+
+`ProductoNoEncontradoException`: se lanza cuando se busca un producto por ID y no existe.
+
+```java
+public class StockInsuficienteException extends Exception {
+    public StockInsuficienteException(String mensaje) {
+        super(mensaje);
+    }
+}
+```
+
+# 4. Capa de Persistencia (com.medimarket.persistencia)
+
+Configuración del Repositorio Genérico:
+
+En lugar de crear un repositorio diferente para cada entidad, diseñamos una clase abstracta genérica que centraliza toda la lógica de persistencia. La clave está en la genericidad acotada `<T extends Identificable & Serializable>`, que asegura en tiempo de compilación que cualquier T tenga un ID y se pueda serializar.
+
+```java
+public abstract class RepositorioGenerico<T extends Identificable & Serializable>
+        implements OperacionesCRUD<T> {
+
+    protected String archivo;
+    protected List<T> entidades;
+
+    public RepositorioGenerico(String archivo) {
+        this.archivo = archivo;
+        this.entidades = new ArrayList<>();
+        cargar();
+    }
+
+    @Override
+    public void guardar(T entidad) {
+        T existente = buscarPorId(entidad.getId());
+        if (existente != null) entidades.remove(existente);
+        entidades.add(entidad);
+        persistir();
+    }
+
+    protected void cargar() {
+        File f = new File(archivo);
+        if (!f.exists()) return;
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(f))) {
+            entidades = (List<T>) in.readObject();
+        } catch (Exception e) { entidades = new ArrayList<>(); }
+    }
+
+    protected void persistir() {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(archivo))) {
+            out.writeObject(entidades);
+        } catch (IOException e) { e.printStackTrace(); }
+    }
+}
+```
+
+# Repositorios Concretos:
+
+A partir del repositorio genérico se crearon tres repositorios especializados, cada uno con métodos de búsqueda específicos:
+
+`RepositorioProductos`: agrega `buscarPorNombre()`, `filtrarPorCategoria()`, `obtenerDestacados()` y `obtenerEnOferta()`.
+
+`RepositorioUsuarios`: agrega `buscarPorEmail()` para autenticación.
+
+`RepositorioPedidos`: agrega `listarPorUsuario()` para historial.
+
+Los archivos `.dat` generados son:
+
+- `data/productos.dat` — Catálogo de productos
+- `data/usuarios.dat` — Usuarios registrados
+- `data/pedidos.dat` — Historial de pedidos
+
+# 5. Capa de Controlador (com.medimarket.controlador)
+
+Configuración del Controlador Principal:
+
+`TiendaControlador` es la clase central del sistema. Actúa como mediador entre la vista y los repositorios, implementando toda la lógica de negocio. La vista nunca habla directamente con la persistencia: siempre pasa por el controlador.
+
+Métodos principales del controlador:
+
+`registrar()`: valida datos, verifica unicidad de email, crea usuario y lo persiste.
+
+```java
+public Usuario registrar(String nombre, String email, String password,
+                         String telefono, String direccion,
+                         Usuario.TipoUsuario tipo) throws DatosInvalidosException {
+    Validador.validarTexto(nombre, "nombre");
+    Validador.validarEmail(email);
+    Validador.validarPassword(password);
+    if (repoUsuarios.buscarPorEmail(email) != null)
+        throw new DatosInvalidosException("Ya existe un usuario con ese email.");
+
+    Usuario u = new Usuario(GeneradorId.generarConPrefijo("USR"),
+                           nombre, email, password, telefono, direccion, tipo);
+    repoUsuarios.guardar(u);
+    return u;
+}
+```
+
+`iniciarSesion()`: autentica al usuario verificando email y contraseña, y guarda referencia del usuario actual.
+
+`buscarProductos()` y `filtrarProductos()`: realizan búsquedas y filtros sobre el catálogo.
+
+`agregarAlCarrito()`: verifica stock disponible y agrega el producto al carrito del usuario.
+
+`finalizarCompra()`: orquesta el proceso completo de compra, verificando stock, reduciendo inventario, creando el pedido y persistiendo todos los cambios.
+
+```java
+public Pedido finalizarCompra(String direccion, String metodoPago)
+        throws StockInsuficienteException, AutenticacionException {
+    if (usuarioActual == null)
+        throw new AutenticacionException("Debe iniciar sesión.");
+
+    for (ItemCarrito item : carrito.getItems()) {
+        if (!item.getProducto().hayStock(item.getCantidad()))
+            throw new StockInsuficienteException(
+                "Stock insuficiente de: " + item.getProducto().getNombre());
+    }
+
+    for (ItemCarrito item : carrito.getItems()) {
+        item.getProducto().reducirStock(item.getCantidad());
+        repoProductos.guardar(item.getProducto());
+    }
+
+    Pedido pedido = new Pedido(GeneradorId.generarConPrefijo("PED"),
+                              usuarioActual,
+                              new ArrayList<>(carrito.getItems()),
+                              carrito.calcularTotal(),
+                              direccion, metodoPago);
+    repoPedidos.guardar(pedido);
+    carrito.vaciar();
+    return pedido;
+}
+```
+
+# Inicialización de Datos:
+
+`InicializadorDatos` es una clase utilitaria que se ejecuta solo la primera vez. Si los archivos `.dat` están vacíos, carga automáticamente:
+
+- 34 productos iniciales distribuidos en las 12 categorías
+- 2 usuarios demo: cliente (`demo@medimarket.com / demo123`) y administrador (`admin@medimarket.com / admin123`)
+
+```java
+public static void inicializarSiVacio() {
+    RepositorioProductos repoProd = new RepositorioProductos("data/productos.dat");
+    RepositorioUsuarios repoUsr = new RepositorioUsuarios("data/usuarios.dat");
+
+    if (repoProd.listarTodos().isEmpty()) cargarCatalogo(repoProd);
+    if (repoUsr.listarTodos().isEmpty()) cargarUsuariosDemo(repoUsr);
+}
+```
+
+# 6. Capa de Utilidades (com.medimarket.util)
+
+Configuración de Validaciones:
+
+`Validador` centraliza todas las validaciones del sistema usando expresiones regulares (regex). Esto evita duplicar código y permite cambiar reglas en un solo lugar.
+
+```java
+public class Validador {
+    private static final String EMAIL_REGEX = "^[\\w.-]+@[\\w.-]+\\.\\w+$";
+
+    public static void validarEmail(String email) throws DatosInvalidosException {
+        if (email == null || !email.matches(EMAIL_REGEX))
+            throw new DatosInvalidosException("El formato del email no es válido.");
+    }
+
+    public static void validarPassword(String pass) throws DatosInvalidosException {
+        if (pass == null || pass.length() < 6)
+            throw new DatosInvalidosException("La contraseña debe tener al menos 6 caracteres.");
+    }
+}
+```
+
+`GeneradorId`: genera identificadores únicos con UUID truncado y prefijo (ejemplos: `USR-A8F12B30`, `PED-7C291792`).
+
+`TemaVisual`: centraliza la paleta de colores corporativa (azul primario `#00B4D8`, verde salud `#06D6A0`, etc.), las fuentes y los eslóganes de la marca.
+
+# 7. Capa de Vista (com.medimarket.vista)
+
+Configuración de la Interfaz Gráfica:
+
+La vista está construida completamente con Java Swing. La ventana principal mide 1280×820 píxeles y se organiza en 4 zonas: header (cabecera), sidebar (lateral), área central (cambia con CardLayout) y footer.
+
+`VentanaPrincipal`: es el JFrame principal. Cuando el usuario hace clic en una opción del sidebar, se cambia la vista del área central usando CardLayout. Las secciones disponibles son: Inicio, Catálogo, Ofertas, Destacados, Mis Pedidos, Sobre Nosotros, Blog y Contacto.
+
+```java
+public class VentanaPrincipal extends JFrame {
+    private final TiendaControlador controlador;
+    private CardLayout cardLayout;
+    private JPanel panelContenido;
+    private JLabel badgeCarrito;
+
+    public VentanaPrincipal(TiendaControlador controlador) {
+        this.controlador = controlador;
+        setTitle("MediMarket - Tu salud en las mejores manos");
+        setSize(1280, 820);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        construirUI();
+    }
+}
+```
+
+# Componentes Personalizados:
+
+`BotonModerno`: extiende `JButton` y sobrescribe `paintComponent()` para dibujar bordes redondeados con `Graphics2D`. Tiene métodos factory estáticos: `primario()`, `secundario()`, `exito()` y `peligro()`.
+
+```java
+@Override
+protected void paintComponent(Graphics g) {
+    Graphics2D g2 = (Graphics2D) g.create();
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                       RenderingHints.VALUE_ANTIALIAS_ON);
+    g2.setColor(getModel().isRollover() ? colorHover : colorFondo);
+    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+    super.paintComponent(g2);
+    g2.dispose();
+}
+```
+
+`IconoMedico`: genera 12 iconos vectoriales diferentes usando `Graphics2D`. Cada categoría tiene su propio icono dibujado por código (jeringa, píldora, microscopio, mascarilla, etc.). No se usan imágenes externas.
+
+`TarjetaProducto`: muestra cada producto como una tarjeta con sombra, gradiente, badges de oferta/destacado, nombre, precio (con tachado si tiene descuento) y botones "Ver detalle" y "Agregar al carrito".
+
+# Diálogos Modales:
+
+`DialogoLogin`: ventana modal con dos pestañas (Iniciar Sesión / Registrarse). Incluye validación en tiempo real y muestra mensajes de error con `JOptionPane`.
+
+`DialogoCarrito`: muestra los items del carrito con miniatura, nombre, cantidad, precio unitario y subtotal. Al final hay un resumen con el total y un botón "Finalizar compra" que abre un sub-diálogo solicitando dirección y método de pago.
+
+`DialogoDetalleProducto`: vista expandida de un producto con icono grande, nombre, marca, categoría, descripción, detalle específico (que varía según sea EquipoMedico, Medicamento o InsumoMedico, demostrando polimorfismo en acción), precio destacado, spinner de cantidad y botón "Agregar al carrito".
+
+# 8. Punto de Entrada (Main.java)
+
+La clase `Main` contiene el método `main()` que arranca toda la aplicación:
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        InicializadorDatos.inicializarSiVacio();
+
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception ignored) {}
+
+            TiendaControlador controlador = new TiendaControlador();
+            VentanaPrincipal ventana = new VentanaPrincipal(controlador);
+            ventana.setVisible(true);
+        });
+    }
+}
+```
+
+`SwingUtilities.invokeLater` es esencial: Swing no es thread-safe, por lo que toda la creación y modificación de componentes UI debe ejecutarse en el Event Dispatch Thread (EDT). `UIManager.setLookAndFeel` aplica el aspecto nativo del sistema operativo para que la aplicación se vea integrada con Windows, macOS o Linux.
 
 # Requisitos y Dependencias:
 
-Este proyecto requiere ciertas bibliotecas de Python que puedes instalar con el siguiente archivo requirements.txt:
+Este proyecto NO requiere bibliotecas externas. Todo se implementa con APIs nativas del JDK estándar. La única dependencia es:
 
-# Archivo requirements.txt:
+# Java Development Kit (JDK):
 
-Flask
-Flask-SQLAlchemy
-flask-cors
-mysql-connector-python
-Pillow
-requests
+- Versión mínima: Java 17
+- Versión recomendada: OpenJDK 21
+- Descarga: https://adoptium.net/
 
-# Para instalar todas las dependencias, ejecuta el siguiente comando:
+# Para verificar la instalación:
 
-pip install -r requirements.txt
+```
+java -version
+javac -version
+```
+
+A diferencia de proyectos basados en Python o Node.js, no es necesario instalar paquetes con pip o npm. El JDK incluye todo lo necesario:
+
+- Java Swing y AWT (interfaz gráfica)
+- Java Serialization (persistencia)
+- Java Collections (estructuras de datos)
+- Java Generics (tipos genéricos)
+- Java Regex (validaciones)
+- Java Time API (fechas)
 
 # Pasos para Ejecutar el Proyecto:
-# Ejecutar el Backend (Flask):
-En la terminal, navega a la carpeta donde está el archivo app.py y ejecuta:
 
-\MediMarket>python backend \app.py
+# Opción 1 — Ejecutar el JAR directamente:
 
-Esto iniciará el servidor Flask y estará disponible en http://127.0.0.1:5000.
+En la terminal, navega a la carpeta del proyecto donde está `MediMarket.jar` y ejecuta:
 
-# Ejecutar el Frontend (Tkinter):
-En otra terminal, navega a la carpeta donde está el archivo main.py y ejecuta:
+```
+\MediMarket>java -jar MediMarket.jar
+```
 
-\MediMarket>python frontend \main.py
+Esto inicia la aplicación de escritorio inmediatamente. En Windows también se puede hacer doble clic sobre el JAR si Java está asociado a archivos `.jar`.
 
-# Este proyecto está compuesto por dos partes:
+# Opción 2 — Ejecutar desde código fuente compilado:
 
-# Backend (Flask + MySQL): Gestiona la lógica de negocio y permite interactuar con la base de datos a través de una API RESTful.
-# Frontend (Tkinter): Una interfaz gráfica de usuario que obtiene productos desde el backend y los muestra de manera visual.
+En la terminal, navega a la carpeta del proyecto y ejecuta:
 
-# Las dependencias necesarias incluyen Flask, Flask-SQLAlchemy, MySQL, Tkinter, Pillow, y Requests. Si todo está correctamente configurado, podrás ver los productos de la tienda cargados en la interfaz de Tkinter
+```
+\MediMarket>java -cp bin com.medimarket.Main
+```
 
+# Opción 3 — Compilar y ejecutar desde cero:
 
+```
+\MediMarket>mkdir bin
+\MediMarket>javac -d bin -sourcepath src $(find src -name "*.java")
+\MediMarket>java -cp bin com.medimarket.Main
+```
 
+# Opción 4 — Ejecutar desde Eclipse IDE:
 
+1. Importar el proyecto: File → Import → General → Existing Projects into Workspace.
+2. Verificar que la carpeta `src` esté marcada como Source Folder.
+3. Click derecho sobre `Main.java` → Run As → Java Application.
 
+# Opción 5 — Usar los scripts incluidos:
 
+Linux/macOS:
+```
+./run.sh
+```
 
+Windows:
+```
+run.bat
+```
 
+# Credenciales Demo:
 
+La aplicación crea automáticamente dos usuarios de prueba en la primera ejecución:
 
+- Cliente: `demo@medimarket.com / demo123`
+- Administrador: `admin@medimarket.com / admin123`
+
+# Estructura de Archivos Generados:
+
+Al ejecutar la aplicación por primera vez, se crea automáticamente la carpeta `data/` con tres archivos binarios:
+
+- `data/productos.dat` — 34 productos iniciales del catálogo
+- `data/usuarios.dat` — Usuarios registrados (incluyendo los demo)
+- `data/pedidos.dat` — Historial de pedidos finalizados
+
+Estos archivos persisten entre ejecuciones, por lo que los datos se conservan al cerrar y volver a abrir la aplicación.
+
+# Este proyecto está compuesto por una sola aplicación monolítica organizada en 7 paquetes:
+
+# Capa Modelo (com.medimarket.modelo): Contiene las entidades del dominio aplicando los pilares de POO (clase abstracta Producto, herencia con EquipoMedico/Medicamento/InsumoMedico, polimorfismo, encapsulamiento).
+
+# Capa Persistencia (com.medimarket.persistencia): Implementa el patrón Repository con una clase genérica `RepositorioGenerico<T>` y tres especializaciones, usando serialización Java para guardar y leer archivos `.dat`.
+
+# Capa Controlador (com.medimarket.controlador): `TiendaControlador` orquesta toda la lógica de negocio actuando como mediador entre la vista y la persistencia.
+
+# Capa Vista (com.medimarket.vista): Interfaz gráfica con Swing, incluyendo ventana principal, diálogos modales y componentes personalizados con `Graphics2D`.
+
+# Capa Interfaces (com.medimarket.interfaces): Define los contratos del sistema (Vendible, Identificable, OperacionesCRUD<T>) aplicando interfaces y genericidad.
+
+# Capa Excepciones (com.medimarket.excepciones): Cuatro excepciones verificadas propias del dominio para manejo robusto de errores.
+
+# Capa Utilidades (com.medimarket.util): Validaciones con regex, generador de IDs únicos y constantes visuales.
+
+# Las dependencias necesarias se reducen únicamente al Java JDK 21. Si todo está correctamente configurado, la aplicación inicia inmediatamente con un catálogo de 34 productos en 12 categorías, sistema de login funcional, carrito de compras dinámico, finalización de compra con generación de pedidos, y persistencia automática de todos los datos en archivos `.dat`.
